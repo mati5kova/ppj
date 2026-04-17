@@ -1,0 +1,26 @@
+⟨izraz⟩ ::= ⟨aditivni⟩ EOF
+⟨aditivni⟩ ::= ⟨multiplikativni⟩ | ⟨aditivni⟩ + ⟨multiplikativni⟩
+⟨multiplikativni⟩ ::= ⟨nasprotni⟩ | ⟨multiplikativni⟩ * ⟨nasprotni⟩
+⟨nasprotni⟩ ::= - ⟨nasprotni⟩ | ⟨osnovni⟩
+⟨osnovni⟩ ::= ( ⟨aditivni⟩ ) | ⟨spremenljivka⟩ | ⟨konstanta⟩
+⟨spremenljivka⟩ ::= [a-zA-Z]+
+⟨konstanta⟩ ::= ⟨float⟩
+
+// minus dodan
+⟨izraz⟩ ::= ⟨aditivni⟩ EOF
+⟨aditivni⟩ ::= ⟨multiplikativni⟩ | ⟨aditivni⟩ + ⟨multiplikativni⟩ | ⟨aditivni⟩ - ⟨multiplikativni⟩
+⟨multiplikativni⟩ ::= ⟨nasprotni⟩ | ⟨multiplikativni⟩ * ⟨nasprotni⟩
+⟨nasprotni⟩ ::= - ⟨nasprotni⟩ | ⟨osnovni⟩
+⟨osnovni⟩ ::= ( ⟨aditivni⟩ ) | ⟨spremenljivka⟩ | ⟨konstanta⟩
+⟨spremenljivka⟩ ::= [a-zA-Z]+
+⟨konstanta⟩ ::= ⟨float⟩
+
+// potenca
+⟨izraz⟩ ::= ⟨aditivni⟩ EOF
+⟨aditivni⟩ ::= ⟨multiplikativni⟩ | ⟨aditivni⟩ + ⟨multiplikativni⟩ | ⟨aditivni⟩ - ⟨multiplikativni⟩
+⟨multiplikativni⟩ ::= ⟨nasprotni⟩ | ⟨multiplikativni⟩ * ⟨nasprotni⟩
+⟨nasprotni⟩ ::= - ⟨nasprotni⟩ | ⟨potenca⟩
+⟨potenca⟩ ::= ⟨osnovni⟩ | ⟨osnovni⟩ ^ ⟨potenca⟩
+⟨osnovni⟩ ::= ( ⟨aditivni⟩ ) | ⟨spremenljivka⟩ | ⟨konstanta⟩
+⟨spremenljivka⟩ ::= [a-zA-Z]+
+⟨konstanta⟩ ::= ⟨float⟩
