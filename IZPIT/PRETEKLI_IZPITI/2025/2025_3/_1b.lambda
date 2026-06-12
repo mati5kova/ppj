@@ -1,0 +1,5 @@
+F = ^ f . ^ x . f(f(f(f x))).
+F F s z je oblike s(s(...(s z))) kjer se `s` pojavi n-krat.
+Kaksna je vrednost `n`?
+
+n^256

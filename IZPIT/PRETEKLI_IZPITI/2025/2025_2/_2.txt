@@ -1,0 +1,15 @@
+{ n > 1 }
+x := n ;
+{ x = n }
+c := n ;
+{ x = n }
+
+while x = n and not (c = 0) do
+    { x = n and c != 0 }
+    S ;
+    { x = n }
+    c := c - 1 ;
+    { x = n }
+done
+
+{ x = n and not (x = n and c != 0) }

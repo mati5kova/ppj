@@ -1,0 +1,3 @@
+int ≤ float
+((float → int) → float) → float < τ < ((int → float) → float) → float
+

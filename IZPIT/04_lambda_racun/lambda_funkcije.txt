@@ -1,0 +1,584 @@
+-- Konstanta A: simbolicna vrednost za rezultate, npr. compareC vrne A za primer n < m.
+:constant A
+-- Konstanta B: simbolicna vrednost za rezultate, npr. compareC vrne B za primer n = m.
+:constant B
+-- Konstanta C: simbolicna vrednost za rezultate, npr. compareC vrne C za primer n > m.
+:constant C
+:constant S
+:constant Z
+
+-- Churchova števila
+-- Churchovo stevilo 0: funkcijo f uporabi 0-krat na x. Primer: 0 f x predstavlja f^0(x).
+0  := ^ f x . x ;
+-- Churchovo stevilo 1: funkcijo f uporabi 1-krat na x. Primer: 1 f x predstavlja f^1(x).
+1  := ^ f x . f x ;
+2  := ^ f x . f (f x) ;
+3  := ^ f x . f (f (f x)) ;
+4  := ^ f x . f (f (f (f x))) ;
+5  := ^ f x . f (f (f (f (f x)))) ;
+6  := ^ f x . f (f (f (f (f (f x))))) ;
+7  := ^ f x . f (f (f (f (f (f (f x)))))) ;
+8  := ^ f x . f (f (f (f (f (f (f (f x))))))) ;
+9  := ^ f x . f (f (f (f (f (f (f (f (f x)))))))) ;
+10 := ^ f x . f (f (f (f (f (f (f (f (f (f x))))))))) ;
+-- prikaz / izpis
+showC := ^ n . n S Z ;
+-- primer uporabe: showC 10;
+
+-- Church-Scottova števila
+-- Scott-Churchovo stevilo 0: korak dobi predhodnika in akumulator. Primer: show 0' prikaze 0.
+0' := ^ f x . x ;
+-- Scott-Churchovo stevilo 1: korak dobi predhodnika in akumulator. Primer: show 1' prikaze 1.
+1' := ^ f x . f 0' x ;
+-- Scott-Churchovo stevilo 2: korak dobi predhodnika in akumulator. Primer: show 2' prikaze 2.
+2' := ^ f x . f 1' (f 0' x) ;
+-- Scott-Churchovo stevilo 3: korak dobi predhodnika in akumulator. Primer: show 3' prikaze 3.
+3' := ^ f x . f 2' (f 1' (f 0' x)) ;
+-- Scott-Churchovo stevilo 4: korak dobi predhodnika in akumulator. Primer: show 4' prikaze 4.
+4' := ^ f x . f 3' (f 2' (f 1' (f 0' x)));
+showSC := ^ n . n (^ m r . S r) Z ;
+-- primer uporabe: ``` :eager ; showSC 3'; ```
+
+-- Identiteta: vrne argument nespremenjen. Primer: id A -> A.
+id := ^ x . x;
+-- Kompozicija dveh funkcij: najprej uporabi g, nato f. Primer: compose f g x -> f (g x).
+compose := ^ f g x. f (g x);
+
+-- Churchova resnicna vrednost: izbere prvi argument. Primer: true A B -> A.
+-- bool, boolean
+true := ^ x y . x;
+-- Churchova neresnicna vrednost: izbere drugi argument. Primer: false A B -> B.
+false := ^ x y . y;
+
+-- Pogojni izraz za Churchove booleane. Primer: ifthen true A B -> A.
+ifthen := ^ p x y . p x y;
+
+-- Negacija Churchovega booleana. Primer: not true -> false.
+not := ^ x . x false true;
+-- Logicni in. Primer: and true false -> false.
+and := ^ x y . x y false;
+-- Logicni ali. Primer: or false true -> true.
+or := ^ x y . x true y;
+-- Implikacija p => q. Primer: imply true false -> false.
+imply := ^ x y . x y true;
+-- Ekvivalenca booleanov: true, kadar sta oba enaka. Primer: iff true true -> true.
+iff := ^ x y . and (imply x y) (imply y x);
+-- Ekskluzivni ali: true, kadar sta argumenta razlicna. Primer: xor true false -> true.
+xor := ^ x y . ifthen x (not y) y;
+-- Negacija konjunkcije. Primer: nand true true -> false.
+nand := ^ x y . not (and x y);
+-- Negacija disjunkcije. Primer: nor false false -> true.
+nor := ^ x y . not (or x y);
+-- Negacija xor oziroma enakost booleanov. Primer: xnor true true -> true.
+xnor := ^ x y . iff x y;
+
+-- pari
+-- Urejen par: zapakira x in y v funkcijo izbire. Primer: first (pair A B) -> A.
+pair := ^ x y . ^ p . p x y;
+-- Prva projekcija para. Primer: first (pair A B) -> A.
+first := ^ p . p true;
+-- Druga projekcija para. Primer: second (pair A B) -> B.
+second := ^ p . p false ;
+
+-- trojice
+-- Urejena trojica: zapakira x, y, z. Primer: snd (triple A B C) -> B.
+triple := ^ x y z . ^ t . t x y z;
+-- Prva projekcija trojice. Primer: tripleFirst (triple A B C) -> A.
+tripleFirst := ^ t . t (^ x y z . x);
+-- Druga projekcija trojice. Primer: tripleSecond (triple A B C) -> B.
+tripleSecond := ^ t . t (^ x y z . y);
+-- Tretja projekcija trojice. Primer: tripleThird (triple A B C) -> C.
+tripleThird := ^ t . t (^ x y z . z);
+
+-- kombinatorji / beta-redukcija / SKI
+
+-- Kombinator I, identiteta. Primer: I A -> A.
+I := ^ x . x ;
+-- Kombinator K, konstantna funkcija prvega argumenta. Primer: K A B -> A.
+K := ^ x y . x ;
+-- Konstantna funkcija drugega argumenta. Primer: K2 A B -> B.
+K2 := ^ x y . y ;
+-- Kombinator S: porazdeli isti argument na dve funkciji. Primer: Scomb K K A -> A.
+Scomb := ^ x y z . x z (y z) ;
+-- Kombinator B, kompozicija funkcij. Primer: Bcomb f g x -> f (g x).
+Bcomb := ^ f g x . f (g x) ;
+-- Kombinator C, zamenja vrstni red zadnjih dveh argumentov. Primer: Ccomb f A B -> f B A.
+Ccomb := ^ f x y . f y x ;
+-- Kombinator W, podvoji argument. Primer: Wcomb f A -> f A A.
+Wcomb := ^ f x . f x x ;
+-- Thrush/pipe kombinator: vrednost poda funkciji. Primer: Tcomb A f -> f A.
+Tcomb := ^ x f . f x ;
+-- Vireo, konstrukcija para v funkcijskem slogu. Primer: Vcomb A B f -> f A B.
+Vcomb := ^ x y f . f x y ;
+-- Mockingbird, samoaplikacija. Primer: Mcomb f -> f f; lahko divergira pri Mcomb Mcomb.
+Mcomb := ^ x . x x ;
+
+-- Navadna aplikacija funkcije na argument. Primer: apply f x -> f x.
+apply := ^ f x . f x ;
+-- Obrnjena aplikacija, uporabna za branje kot cevovod. Primer: thrush x f -> f x.
+thrush := ^ x f . f x ;
+-- Uporabi f na oba argumenta, nato op. Primer: on eqC succC 1 2 primerja 2 in 3.
+on := ^ op f x y . op (f x) (f y) ;
+-- Psi kombinator: f uporabi na rezultatih g x in g y. Primer: psi op g x y -> op (g x) (g y).
+psi := ^ f g x y . f (g x) (g y) ;
+-- Kompozicija treh funkcij. Primer: chain f g h x -> f (g (h x)).
+chain := ^ f g h x . f (g (h x)) ;
+-- Kompozicija treh funkcij, isto kot chain. Primer: compose3 f g h x -> f (g (h x)).
+compose3 := ^ f g h x . f (g (h x)) ;
+-- Konstantna funkcija prvega argumenta. Primer: constK A B -> A.
+constK := ^ x y . x ;
+-- Obrne zadnja dva argumenta funkcije. Primer: flipC f A B -> f B A.
+flipC := ^ f x y . f y x ;
+-- Substitucijski vzorec S. Primer: substS x y z -> x z (y z).
+substS := ^ x y z . x z (y z) ;
+-- Podvoji argument za binarno funkcijo. Primer: dupArg f x -> f x x.
+dupArg := ^ f x . f x x ;
+-- Razsirjena kompozicija: g prejme dva argumenta, rezultat gre v f. Primer: blackbird f g x y -> f (g x y).
+blackbird := ^ f g x y . f (g x y) ;
+-- Cardinal, zamenja vrstni red dveh argumentov. Primer: cardinal f x y -> f y x.
+cardinal := ^ f x y . f y x ;
+-- Warbler, podvoji argument. Primer: warbler f x -> f x x.
+warbler := ^ f x . f x x ;
+-- Starling, klasicni S kombinator. Primer: starling x y z -> x z (y z).
+starling := ^ x y z . x z (y z) ;
+-- Bluebird, klasicni B kombinator za kompozicijo. Primer: bluebird f g x -> f (g x).
+bluebird := ^ f g x . f (g x) ;
+
+-- normalni fiksni operator; v eager nacinu lahko divergira
+-- Fiksni operator za rekurzivne definicije v normalnem redu. Pozor: v eager nacinu lahko divergira.
+fix := ^ f . (^ x . f (x x)) (^ x . f (x x)) ;
+
+-- pari
+
+-- Prva projekcija para; sinonim za first pri Churchovih parih. Primer: fstP (pair A B) -> A.
+fstP := ^ p . p true ;
+-- Druga projekcija para; sinonim za second. Primer: sndP (pair A B) -> B.
+sndP := ^ p . p false ;
+-- Zamenja komponenti para. Primer: swapP (pair A B) -> pair B A.
+swapP := ^ p . pair (second p) (first p) ;
+-- Iz vrednosti naredi par dveh enakih vrednosti. Primer: dupP A -> pair A A.
+dupP := ^ x . pair x x ;
+-- Preslika prvo komponento para. Primer: mapFstP f (pair A B) -> pair (f A) B.
+mapFstP := ^ f p . pair (f (first p)) (second p) ;
+-- Preslika drugo komponento para. Primer: mapSndP f (pair A B) -> pair A (f B).
+mapSndP := ^ f p . pair (first p) (f (second p)) ;
+-- Preslika obe komponenti para z locenima funkcijama. Primer: bimapP f g (pair A B) -> pair (f A) (g B).
+bimapP := ^ f g p . pair (f (first p)) (g (second p)) ;
+-- Primerjava parov z danima primerjavama komponent. Primer: pairEq eqA eqB p q.
+pairEq := ^ eqA eqB p q . and (eqA (first p) (first q)) (eqB (second p) (second q)) ;
+-- Pretvori funkcijo na paru v funkcijo z dvema argumentoma. Primer: curryP f A B -> f (pair A B).
+curryP := ^ f x y . f (pair x y) ;
+-- Pretvori funkcijo dveh argumentov v funkcijo na paru. Primer: uncurryP f (pair A B) -> f A B.
+uncurryP := ^ f p . f (first p) (second p) ;
+-- Preasociira vgnezden par v desno. Primer: pair (pair A B) C -> pair A (pair B C).
+assocRightP := ^ p . pair (first (first p)) (pair (second (first p)) (second p)) ;
+-- Preasociira vgnezden par v levo. Primer: pair A (pair B C) -> pair (pair A B) C.
+assocLeftP := ^ p . pair (pair (first p) (first (second p))) (second (second p)) ;
+-- Par interpretira kot funkcijo in argument. Primer: applyPair (pair f x) -> f x.
+applyPair := ^ p . (first p) (second p) ;
+-- Paru doda tretjo komponento in naredi trojico. Primer: pairToTriple (pair A B) C -> triple A B C.
+pairToTriple := ^ p z . triple (first p) (second p) z ;
+-- Izbere prvo ali drugo komponento glede na boolean. Primer: selectPair true (pair A B) -> A.
+selectPair := ^ b p . b (first p) (second p) ;
+
+-- trojice, neposredno po vzorcu iz izpitov
+
+-- Prva projekcija trojice. Primer: fst (triple A B C) -> A.
+fst := ^ t . t (^ x y z . x) ;
+-- Druga projekcija trojice. Primer: snd (triple A B C) -> B.
+snd := ^ t . t (^ x y z . y) ;
+-- Tretja projekcija trojice. Primer: thd (triple A B C) -> C.
+thd := ^ t . t (^ x y z . z) ;
+
+-- Preslika prvo komponento trojice. Primer: tripleMap1 f (triple A B C) -> triple (f A) B C.
+tripleMap1 := ^ f t . triple (f (fst t)) (snd t) (thd t) ;
+-- Preslika drugo komponento trojice. Primer: tripleMap2 f (triple A B C) -> triple A (f B) C.
+tripleMap2 := ^ f t . triple (fst t) (f (snd t)) (thd t) ;
+-- Preslika tretjo komponento trojice. Primer: tripleMap3 f (triple A B C) -> triple A B (f C).
+tripleMap3 := ^ f t . triple (fst t) (snd t) (f (thd t)) ;
+
+-- Rotira trojico levo. Primer: rotateLeft3 (triple A B C) -> triple B C A.
+rotateLeft3 := ^ t . triple (snd t) (thd t) (fst t) ;
+-- Rotira trojico desno. Primer: rotateRight3 (triple A B C) -> triple C A B.
+rotateRight3 := ^ t . triple (thd t) (fst t) (snd t) ;
+-- Zamenja prvo in drugo komponento trojice. Primer: swap12T (triple A B C) -> triple B A C.
+swap12T := ^ t . triple (snd t) (fst t) (thd t) ;
+-- Zamenja prvo in tretjo komponento trojice. Primer: swap13T (triple A B C) -> triple C B A.
+swap13T := ^ t . triple (thd t) (snd t) (fst t) ;
+-- Zamenja drugo in tretjo komponento trojice. Primer: swap23T (triple A B C) -> triple A C B.
+swap23T := ^ t . triple (fst t) (thd t) (snd t) ;
+
+-- Iz trojice vzame prvi dve komponenti. Primer: tripleToPair12 (triple A B C) -> pair A B.
+tripleToPair12 := ^ t . pair (fst t) (snd t) ;
+-- Iz trojice vzame drugo in tretjo komponento. Primer: tripleToPair23 (triple A B C) -> pair B C.
+tripleToPair23 := ^ t . pair (snd t) (thd t) ;
+-- Iz trojice vzame prvo in tretjo komponento. Primer: tripleToPair13 (triple A B C) -> pair A C.
+tripleToPair13 := ^ t . pair (fst t) (thd t) ;
+
+-- Pretvori funkcijo na trojici v funkcijo treh argumentov. Primer: curry3 f A B C -> f (triple A B C).
+curry3 := ^ f x y z . f (triple x y z) ;
+-- Pretvori funkcijo treh argumentov v funkcijo na trojici. Primer: uncurry3 f (triple A B C) -> f A B C.
+uncurry3 := ^ f t . f (fst t) (snd t) (thd t) ;
+-- Primerja trojici z danimi primerjavami komponent. Primer: tripleEq eqA eqB eqC p q.
+tripleEq := ^ eqA eqB eqC p q . and (eqA (fst p) (fst q)) (and (eqB (snd p) (snd q)) (eqC (thd p) (thd q))) ;
+
+-- Churchova stevila
+
+-- Naslednik Churchovega stevila. Primer: succC 2 predstavlja 3.
+succC := ^ n f x . f (n f x) ;
+-- Sestevanje Churchovih stevil. Primer: plusC 2 3 predstavlja 5.
+plusC := ^ n m f x . n f (m f x) ;
+-- Mnozenje Churchovih stevil. Primer: multC 2 3 predstavlja 6.
+multC := ^ n m f x . n (m f) x ;
+-- Potenciranje Churchovih stevil. Primer: powC 2 3 predstavlja 8.
+powC := ^ n m . m n ;
+
+-- Predhodnik Churchovega stevila z znanim parnim trikom. Primer: predC 3 predstavlja 2.
+predC := ^ n f x . n (^ g h . h (g f)) (^ u . x) (^ u . u) ;
+-- Odstevanje z zaporedno uporabo predhodnika, odrezano pri 0. Primer: subC 5 2 predstavlja 3.
+subC := ^ n m . m predC n ;
+
+-- Preveri, ali je Churchovo stevilo 0. Primer: iszeroC 0 -> true.
+iszeroC := ^ n . n (^ x . false) true ;
+-- Primerjava <= za Churchova stevila. Primer: leqC 2 3 -> true.
+leqC := ^ n m . iszeroC (subC n m) ;
+-- Primerjava < za Churchova stevila. Primer: ltC 2 3 -> true.
+ltC := ^ n m . not (leqC m n) ;
+-- Primerjava >= za Churchova stevila. Primer: geqC 3 2 -> true.
+geqC := ^ n m . leqC m n ;
+-- Primerjava > za Churchova stevila. Primer: gtC 3 2 -> true.
+gtC := ^ n m . ltC m n ;
+-- Enakost Churchovih stevil. Primer: eqC 2 2 -> true.
+eqC := ^ n m . and (leqC n m) (leqC m n) ;
+-- Neenakost Churchovih stevil. Primer: neqC 2 3 -> true.
+neqC := ^ n m . not (eqC n m) ;
+
+-- Preveri, ali je Churchovo stevilo enako 1. Primer: isoneC 1 -> true.
+isoneC := ^ n . eqC n 1 ;
+-- Preveri, ali je Churchovo stevilo enako 2. Primer: istwoC 2 -> true.
+istwoC := ^ n . eqC n 2 ;
+-- Preveri, ali je Churchovo stevilo enako 3. Primer: isthreeC 3 -> true.
+isthreeC := ^ n . eqC n 3 ;
+
+-- Minimum dveh Churchovih stevil. Primer: minC 2 5 predstavlja 2.
+minC := ^ n m . ifthen (leqC n m) n m ;
+-- Maksimum dveh Churchovih stevil. Primer: maxC 2 5 predstavlja 5.
+maxC := ^ n m . ifthen (leqC n m) m n ;
+
+-- Preveri sodost Churchovega stevila z izmenjevanjem not od true. Primer: Even 2 -> true.
+Even := ^ n . n not true ;
+-- Preveri lihost Churchovega stevila. Primer: Odd 3 -> true.
+Odd := ^ n . n not false ;
+-- Preveri sodost Churchovega stevila. Primer: evenC 4 -> true.
+evenC := ^ n . n not true ;
+-- Preveri lihost Churchovega stevila. Primer: oddC 5 -> true.
+oddC := ^ n . n not false ;
+
+-- Dvakratnik Churchovega stevila. Primer: doubleC 3 predstavlja 6.
+doubleC := ^ n f x . n f (n f x) ;
+-- Trikratnik Churchovega stevila. Primer: tripleCnum 2 predstavlja 6.
+tripleCnum := ^ n f x . n f (n f (n f x)) ;
+-- Kvadrat Churchovega stevila. Primer: squareC 3 predstavlja 9.
+squareC := ^ n . multC n n ;
+-- Kub Churchovega stevila. Primer: cubeC 2 predstavlja 8.
+cubeC := ^ n . multC n (multC n n) ;
+
+-- Izracuna n*n + 1 v Churchovi obliki. Primer: squarePlus1C 3 predstavlja 10.
+squarePlus1C := ^ n f x . n (n f) (f x) ;
+-- Absolutna razlika Churchovih stevil. Primer: absDiffC 2 5 predstavlja 3.
+absDiffC := ^ n m . plusC (subC n m) (subC m n) ;
+-- Omeji n na interval [lo, hi]. Primer: clampC 2 5 7 predstavlja 5.
+clampC := ^ lo hi n . minC hi (maxC lo n) ;
+-- Preveri, ali je n med lo in hi vkljucno. Primer: betweenC 2 5 3 -> true.
+betweenC := ^ lo hi n . and (leqC lo n) (leqC n hi) ;
+
+-- Korak za alternativni izracun predhodnika s parom. Uporablja se v predC2.
+predPairStepC := ^ p . pair (second p) (succC (second p)) ;
+-- Alternativni predhodnik Churchovega stevila prek parov. Primer: predC2 4 predstavlja 3.
+predC2 := ^ n . first (n predPairStepC (pair 0 0)) ;
+
+-- Povecanje za 1. Primer: plus1C 2 predstavlja 3.
+plus1C := ^ n . succC n ;
+-- Zmanjsanje za 1, odrezano pri 0. Primer: minus1C 3 predstavlja 2.
+minus1C := ^ n . predC n ;
+-- Povecanje za 2. Primer: plus2C 3 predstavlja 5.
+plus2C := ^ n . plusC n 2 ;
+-- Zmanjsanje za 2, odrezano pri 0. Primer: minus2C 5 predstavlja 3.
+minus2C := ^ n . subC n 2 ;
+-- Mnozenje z 2. Primer: times2C 4 predstavlja 8.
+times2C := ^ n . multC 2 n ;
+-- Mnozenje s 3. Primer: times3C 4 predstavlja 12.
+times3C := ^ n . multC 3 n ;
+
+-- Preveri, ali je stevilo sodo in pozitivno. Primer: isEvenAndPositiveC 2 -> true.
+isEvenAndPositiveC := ^ n . and (evenC n) (not (iszeroC n)) ;
+-- Preveri, ali je stevilo liho in pozitivno. Primer: isOddAndPositiveC 3 -> true.
+isOddAndPositiveC := ^ n . and (oddC n) (not (iszeroC n)) ;
+-- Primerjava Churchovih stevil: vrne A za <, B za =, C za >. Primer: compareC 2 3 -> A.
+compareC := ^ n m . ifthen (ltC n m) A (ifthen (eqC n m) B C) ;
+
+-- dodatne boolove funkcije
+
+-- Razvejitev po booleanu. Primer: boolCase true A B -> A.
+boolCase := ^ b t e . b t e ;
+-- Normalizira boolean na true/false in preveri resnicnost. Primer: isTrue true -> true.
+isTrue := ^ b . b true false ;
+-- Normalizira boolean na true/false in preveri neresnicnost. Primer: isFalse false -> true.
+isFalse := ^ b . b false true ;
+-- Enakost booleanov. Primer: boolEq true false -> false.
+boolEq := ^ p q . iff p q ;
+-- Neenakost booleanov. Primer: boolNeq true false -> true.
+boolNeq := ^ p q . xor p q ;
+
+-- Konjunkcija treh booleanov. Primer: and3 true true false -> false.
+and3 := ^ p q r . and p (and q r) ;
+-- Disjunkcija treh booleanov. Primer: or3 false false true -> true.
+or3 := ^ p q r . or p (or q r) ;
+-- Parnostni xor treh booleanov. Primer: xor3 true true true -> true.
+xor3 := ^ p q r . xor (xor p q) r ;
+-- Negacija konjunkcije treh booleanov. Primer: nand3 true true true -> false.
+nand3 := ^ p q r . not (and3 p q r) ;
+-- Negacija disjunkcije treh booleanov. Primer: nor3 false false false -> true.
+nor3 := ^ p q r . not (or3 p q r) ;
+
+-- Obrnjena implikacija q => p. Primer: implyRev p q -> imply q p.
+implyRev := ^ p q . imply q p ;
+-- p in ne q; negacija implikacije p => q. Primer: notImply true false -> true.
+notImply := ^ p q . and p (not q) ;
+-- Obrnjen pogojni izraz. Primer: ifnot true A B -> B.
+ifnot := ^ p x y . p y x ;
+
+-- Vecinska funkcija: true, ce sta vsaj dva argumenta true.
+majority3 := ^ p q r . or (and p q) (or (and p r) (and q r)) ;
+-- Negacija vecinske funkcije: true, ce vecina ni true.
+minority3 := ^ p q r . not (majority3 p q r) ;
+-- XOR treh vhodov: true pri lihem stevilu true vrednosti.
+oneOf3 := ^ p q r . xor3 p q r ;
+-- True, ce je vsaj en vhod true.
+atLeastOne3 := ^ p q r . or3 p q r ;
+-- True, ce sta vsaj dva vhoda true.
+atLeastTwo3 := ^ p q r . majority3 p q r ;
+-- True, ce je najvec en vhod true.
+atMostOne3 := ^ p q r . not (atLeastTwo3 p q r) ;
+-- True, ce so vsi trije booleani enaki.
+allSame3 := ^ p q r . and (iff p q) (iff q r) ;
+
+-- Ureditev booleanov false <= true. Primer: bleq false true -> true.
+bleq := ^ p q . imply p q ;
+-- Stroga ureditev booleanov false < true. Primer: blt false true -> true.
+blt := ^ p q . and (not p) q ;
+-- Obratna ureditev booleanov >=. Primer: bgeq true false -> true.
+bgeq := ^ p q . imply q p ;
+-- Stroga obratna ureditev booleanov >. Primer: bgt true false -> true.
+bgt := ^ p q . and p (not q) ;
+
+-- Pretvori boolean v Churchovo stevilo: true -> 1, false -> 0.
+boolToC := ^ b . b 1 0 ;
+-- Pretvori Churchovo stevilo v boolean: 0 -> false, pozitivno -> true.
+boolFromZeroC := ^ n . not (iszeroC n) ;
+-- Primerja para booleanov po komponentah. Primer: boolPairEq (pair true false) (pair true false) -> true.
+boolPairEq := ^ p q . and (iff (first p) (first q)) (iff (second p) (second q)) ;
+
+-- Scott-Churchova stevila, skladno s tvojimi 0', 1', ...
+
+-- Naslednik Scott-Churchovega stevila. Primer: succSC 2' predstavlja 3'.
+succSC := ^ n f x . f n (n f x) ;
+-- Predhodnik Scott-Churchovega stevila. Primer: predSC 3' -> 2'.
+predSC := ^ n . n (^ m r . m) 0' ;
+-- Sestevanje Scott-Churchovih stevil. Primer: plusSC 2' 3' predstavlja 5'.
+plusSC := ^ n k . n (^ m r . succSC r) k ;
+-- Mnozenje Scott-Churchovih stevil. Primer: multSC 2' 3' predstavlja 6'.
+multSC := ^ n k . n (^ m r . plusSC k r) 0' ;
+-- Odstevanje Scott-Churchovih stevil, odrezano pri 0'. Primer: subSC 5' 2' -> 3'.
+subSC := ^ n k . k (^ m r . predSC r) n ;
+
+-- Preveri, ali je Scott-Churchovo stevilo 0'. Primer: iszeroSC 0' -> true.
+iszeroSC := ^ n . n (^ m r . false) true ;
+-- Primerjava <= za Scott-Churchova stevila. Primer: leqSC 2' 3' -> true.
+leqSC := ^ n m . iszeroSC (subSC n m) ;
+-- Primerjava < za Scott-Churchova stevila. Primer: ltSC 2' 3' -> true.
+ltSC := ^ n m . not (leqSC m n) ;
+-- Primerjava >= za Scott-Churchova stevila. Primer: geqSC 3' 2' -> true.
+geqSC := ^ n m . leqSC m n ;
+-- Primerjava > za Scott-Churchova stevila. Primer: gtSC 3' 2' -> true.
+gtSC := ^ n m . ltSC m n ;
+-- Enakost Scott-Churchovih stevil. Primer: eqSC 2' 2' -> true.
+eqSC := ^ n m . and (leqSC n m) (leqSC m n) ;
+-- Neenakost Scott-Churchovih stevil. Primer: neqSC 2' 3' -> true.
+neqSC := ^ n m . not (eqSC n m) ;
+
+-- Preveri sodost Scott-Churchovega stevila. Primer: evenSC 2' -> true.
+evenSC := ^ n . n (^ m r . not r) true ;
+-- Preveri lihost Scott-Churchovega stevila. Primer: oddSC 3' -> true.
+oddSC := ^ n . n (^ m r . not r) false ;
+-- Sinonim za oddSC. Primer: OddSC 3' -> true.
+OddSC := ^ n . n (^ m r . not r) false ;
+
+-- Dvakratnik Scott-Churchovega stevila. Primer: doubleSC 2' predstavlja 4'.
+doubleSC := ^ n . n (^ m r . succSC (succSC r)) 0' ;
+-- Minimum Scott-Churchovih stevil. Primer: minSC 2' 5' -> 2'.
+minSC := ^ n m . ifthen (leqSC n m) n m ;
+-- Maksimum Scott-Churchovih stevil. Primer: maxSC 2' 5' -> 5'.
+maxSC := ^ n m . ifthen (leqSC n m) m n ;
+
+-- Pretvori Churchovo stevilo v Scott-Churchovo obliko. Primer: fromChurchToSC 3 -> 3'.
+fromChurchToSC := ^ n . n succSC 0' ;
+-- Kratko ime za pretvorbo iz Churchovega v Scott-Churchovo stevilo.
+scott := ^ n . n succSC 0' ;
+-- Pretvori Scott-Churchovo stevilo v Churchovo obliko.
+toChurchFromSC := ^ n f x . n (^ m r . f r) x ;
+
+-- Fold/rekurzor nad Scott-Churchovim stevilom. Primer: foldSC n step base.
+foldSC := ^ n step base . n step base ;
+-- Rekurzijski vzorec z bazo in korakom za Scott-Churchova stevila.
+recSC := ^ base step n . n step base ;
+
+-- trivalentna logika T/M/F iz izpitov
+
+-- Trivalentna vrednost true: izbere prvi argument. Primer: T A B C -> A.
+T := ^ x y z . x ;
+-- Trivalentna srednja/neznana vrednost: izbere drugi argument. Primer: M A B C -> B.
+M := ^ x y z . y ;
+-- Trivalentna false vrednost: izbere tretji argument. Primer: F A B C -> C.
+F := ^ x y z . z ;
+
+-- Negacija v trivalentni logiki: T <-> F, M ostane M.
+NOT3 := ^ p . p F M T ;
+-- Trivalentni OR po izpitnem vzorcu. Primer: OR T F -> T.
+OR := ^ p q . p T (q T M M) q ;
+-- Trivalentni AND po izpitnem vzorcu. Primer: AND3 T F -> F.
+AND3 := ^ p q . p q (q M M F) F ;
+-- Trivalentna implikacija, definirana kot OR (NOT3 p) q.
+IMPLY3 := ^ p q . OR (NOT3 p) q ;
+-- Trivalentna enakost: T, ce sta vrednosti enaki, sicer F/M po definiciji.
+EQ3 := ^ p q . p (q T F F) (q F T F) (q F F T) ;
+
+-- Preveri, ali je trivalentna vrednost T. Primer: isT T -> true.
+isT := ^ p . p true false false ;
+-- Preveri, ali je trivalentna vrednost M. Primer: isM M -> true.
+isM := ^ p . p false true false ;
+-- Preveri, ali je trivalentna vrednost F. Primer: isF F -> true.
+isF := ^ p . p false false true ;
+-- Pretvori trivalentno vrednost v boolean z izbranim privzetkom za M.
+triToBoolDefault := ^ d p . p true d false ;
+
+-- permutacije reda 3
+
+-- Identicna permutacija treh argumentov. Primer: p123 f A B C -> f A B C.
+p123 := ^ f x y z . f x y z ;
+-- Permutacija 1-3-2. Primer: p132 f A B C -> f A C B.
+p132 := ^ f x y z . f x z y ;
+-- Permutacija 2-1-3. Primer: p213 f A B C -> f B A C.
+p213 := ^ f x y z . f y x z ;
+-- Permutacija 2-3-1. Primer: p231 f A B C -> f B C A.
+p231 := ^ f x y z . f y z x ;
+-- Permutacija 3-1-2. Primer: p312 f A B C -> f C A B.
+p312 := ^ f x y z . f z x y ;
+-- Permutacija 3-2-1. Primer: p321 f A B C -> f C B A.
+p321 := ^ f x y z . f z y x ;
+
+-- Kompozicija permutacij. Primer: permCompose p q f najprej uporabi q, nato p.
+permCompose := ^ p q f . p (q f) ;
+-- Uporabi permutacijo na trojici. Primer: permApplyT p231 (triple A B C) -> triple B C A.
+permApplyT := ^ p t . p triple (fst t) (snd t) (thd t) ;
+-- Iz treh argumentov naredi permutirano trojico. Primer: permToTriple p132 A B C -> triple A C B.
+permToTriple := ^ p x y z . p triple x y z ;
+
+-- Inverz identicne permutacije.
+permInv123 := p123 ;
+-- Inverz permutacije p132 je p132.
+permInv132 := p132 ;
+-- Inverz permutacije p213 je p213.
+permInv213 := p213 ;
+-- Inverz permutacije p231 je p312.
+permInv231 := p312 ;
+-- Inverz permutacije p312 je p231.
+permInv312 := p231 ;
+-- Inverz permutacije p321 je p321.
+permInv321 := p321 ;
+
+-- Churchovi seznami
+
+-- Prazen Churchov seznam. Primer: isNilL nil -> true.
+nil := ^ c n . n ;
+-- Doda element na zacetek Churchovega seznama. Primer: cons A nil je seznam [A].
+cons := ^ h t c n . c h (t c n) ;
+-- Seznam z enim elementom. Primer: singleton A -> cons A nil.
+singleton := ^ x . cons x nil ;
+
+-- Desni fold seznama. Primer: foldrL xs c n -> xs c n.
+foldrL := ^ xs c n . xs c n ;
+-- Stakne dva seznama. Primer: appendL (singleton A) (singleton B) je [A,B].
+appendL := ^ xs ys c n . xs c (ys c n) ;
+-- Preslika vsak element seznama. Primer: mapL f [A,B] -> [f A, f B].
+mapL := ^ f xs c n . xs (^ h r . c (f h) r) n ;
+-- Obdrzi elemente, ki zadoscajo predikatu. Primer: filterL p xs.
+filterL := ^ p xs c n . xs (^ h r . ifthen (p h) (c h r) r) n ;
+
+-- Preveri, ali je seznam prazen. Primer: isNilL nil -> true.
+isNilL := ^ xs . xs (^ h r . false) true ;
+-- Vrne glavo seznama ali privzeto vrednost. Primer: headOrL D nil -> D.
+headOrL := ^ d xs . xs (^ h r . h) d ;
+-- Vrne rep seznama. Primer: tailL [A,B,C] -> [B,C].
+tailL := ^ xs . first (xs (^ h p . pair (second p) (cons h (second p))) (pair nil nil)) ;
+
+-- Dolzina seznama kot Churchovo stevilo. Primer: lengthL [A,B] predstavlja 2.
+lengthL := ^ xs . xs (^ h r . succC r) 0 ;
+-- True, ce vsaj en element zadosca predikatu. Primer: anyL p xs.
+anyL := ^ p xs . xs (^ h r . or (p h) r) false ;
+-- True, ce vsi elementi zadoscajo predikatu. Primer: allL p xs.
+allL := ^ p xs . xs (^ h r . and (p h) r) true ;
+-- Obrne vrstni red seznama. Primer: reverseL [A,B] -> [B,A].
+reverseL := ^ xs . xs (^ h r . appendL r (singleton h)) nil ;
+-- Doda element na konec seznama. Primer: snocL [A] B -> [A,B].
+snocL := ^ xs x . appendL xs (singleton x) ;
+-- Naredi seznam n kopij elementa, kjer je n Churchovo stevilo. Primer: replicateC 3 A -> [A,A,A].
+replicateC := ^ n x . n (cons x) nil ;
+-- Stakne seznam seznamov v en seznam. Primer: concatL [[A],[B,C]] -> [A,B,C].
+concatL := ^ xss . xss appendL nil ;
+
+-- Maybe
+
+-- Maybe brez vrednosti. Primer: maybe D f nothing -> D.
+nothing := ^ n j . n ;
+-- Maybe z vrednostjo. Primer: maybe D f (just A) -> f A.
+just := ^ x n j . j x ;
+-- Eliminator za Maybe: poda privzeto vrednost ali funkcijo nad vsebino.
+maybe := ^ d f m . m d f ;
+
+-- Preveri, ali je Maybe prazen. Primer: isNothing nothing -> true.
+isNothing := ^ m . m true (^ x . false) ;
+-- Preveri, ali Maybe vsebuje vrednost. Primer: isJust (just A) -> true.
+isJust := ^ m . m false (^ x . true) ;
+-- Vrne vrednost iz Maybe ali privzeto vrednost. Primer: fromMaybe D nothing -> D.
+fromMaybe := ^ d m . m d (^ x . x) ;
+-- Preslika vrednost v just, nothing pusti nespremenjen. Primer: mapMaybe f (just A) -> just (f A).
+mapMaybe := ^ f m . m nothing (^ x . just (f x)) ;
+-- Monadicni bind za Maybe. Primer: bindMaybe (just A) f -> f A.
+bindMaybe := ^ m f . m nothing f ;
+-- Aplikativna aplikacija za Maybe. Primer: apMaybe (just f) (just A) -> just (f A).
+apMaybe := ^ mf mx . mf nothing (^ f . mapMaybe f mx) ;
+-- Primerja dve Maybe vrednosti z dano primerjavo vsebin.
+maybeEq := ^ eq m n . m (n true (^ y . false)) (^ x . n false (^ y . eq x y)) ;
+
+-- Either
+
+-- Leva veja Either, pogosto napaka ali alternativa. Primer: either f g (left A) -> f A.
+left := ^ x l r . l x ;
+-- Desna veja Either, pogosto uspesen rezultat. Primer: either f g (right B) -> g B.
+right := ^ x l r . r x ;
+-- Eliminator za Either: izbere levo ali desno obdelavo.
+either := ^ l r e . e l r ;
+
+-- Preveri, ali je Either leva vrednost. Primer: isLeft (left A) -> true.
+isLeft := ^ e . e (^ x . true) (^ y . false) ;
+-- Preveri, ali je Either desna vrednost. Primer: isRight (right A) -> true.
+isRight := ^ e . e (^ x . false) (^ y . true) ;
+-- Preslika samo levo vejo Either. Primer: mapLeft f (left A) -> left (f A).
+mapLeft := ^ f e . e (^ x . left (f x)) right ;
+-- Preslika samo desno vejo Either. Primer: mapRight f (right A) -> right (f A).
+mapRight := ^ f e . e left (^ x . right (f x)) ;
+-- Preslika obe veji Either z locenima funkcijama.
+bimapEither := ^ f g e . e (^ x . left (f x)) (^ y . right (g y)) ;
+-- Bind po desni veji Either; levo vejo pusti nespremenjeno.
+bindRight := ^ e f . e left f ;

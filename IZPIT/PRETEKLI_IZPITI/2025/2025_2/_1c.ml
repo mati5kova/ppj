@@ -1,0 +1,1 @@
+let rec yes x = yes (print_endline "yes")
