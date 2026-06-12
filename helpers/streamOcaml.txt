@@ -1,0 +1,427 @@
+type 'a stream = Cons of 'a * (unit -> 'a stream)
+
+(* TOK IS SEZNAMA *)
+(* Vrne neskončni tok, ki ima prvih i elemtov iz danega seznama, nato pa ponavlja element `r` *)
+let rec from_list l r = 
+  match l with
+  | el::rest -> Cons(el, fun _ -> from_list rest r)
+  | [] -> Cons(r, fun _ -> from_list [] r)
+
+(* SEZNAM IZ TOKA *)
+let rec to_list n s = 
+  if n < 0 then invalid_arg "to_list: negative n" else
+  match n with
+  | 0 -> []
+  | _ -> 
+    match s with
+    | Cons(el, tail) ->
+      el :: to_list (n-1) (tail ())
+
+
+(* N-TI ELEMENT TOKA *)
+let rec element_at n s = 
+  if n < 0 then invalid_arg "to_list: negative n" else
+  match n with
+  | 0 -> 
+    let Cons(el, _) = s in
+    el
+  | _ -> 
+    let Cons(_, tail) = s in
+    element_at (n-1) (tail())
+
+(* GLAVA TOKA *)
+let head s =
+  let Cons(h, _) = s in 
+  h
+
+(* REP TOKA *)
+let tail s =
+  let Cons(_, tail) = s in 
+  (tail())
+
+(* PRESLIKAVA *)
+let rec map f s = 
+  let Cons(hd, tl) = s in
+  Cons(f hd, fun () -> map f (tl()))
+  
+(* TOK NARAVNIH STEVIL *)
+let nat = 
+  let rec nat_internal n = 
+      Cons(n, fun () -> nat_internal (n+1)) in
+  nat_internal 0
+
+(* FIBONACCIJEVA STEVILA *)
+let fib =
+  let rec fib_internal f0 f1 =
+    Cons(f0, fun () -> fib_internal f1 (f0 + f1)) in
+  fib_internal 0 1
+
+(* PRESLIKAVA PAROV *)
+let rec zip f s1 s2 = 
+  let Cons(h1, t1) = s1 in
+  let Cons(h2, t2) = s2 in
+    Cons(f h1 h2, fun () -> zip f (t1()) (t2()))
+
+(* VECKRATNIKI STEVILA *)
+let veckratniki_stevila k = 
+  let rec veckratniki_stevila_internal n =
+    Cons(n*k, fun () -> veckratniki_stevila_internal (n+1)) in
+  veckratniki_stevila_internal 0
+
+(* VECKRATNIKI *)
+(* stream katerega elementi so tokovi veckratnikov *)
+let veckratniki =
+  let rec veckratniki_internal k =
+    Cons(veckratniki_stevila k, fun () -> veckratniki_internal (k+1)) in
+  veckratniki_internal 0
+
+(* 
+ *
+ * HELPER STREAM, pomoc tokovi
+ *
+ *)
+
+let rec to_list n s = 
+  match n with
+  | 0 -> []
+  | _ -> 
+    match s with
+    | Cons(el, tail) ->
+      el :: to_list (n-1) (tail ())
+
+(* 1. PONAVLJANJE ELEMENTA *)
+(* Vrne neskončni tok, kjer se element x ponavlja v neskončnost. *)
+(* Primer:
+   to_list 5 (repeat "a") = ["a"; "a"; "a"; "a"; "a"]
+*)
+let rec repeat x =
+  Cons(x, fun () -> repeat x)
+
+
+(* 2. KONSTANTNI TOK *)
+(* Enako kot repeat, samo bolj opisno ime. *)
+(* Primer:
+   to_list 4 (constant 7) = [7; 7; 7; 7]
+*)
+let constant x =
+  repeat x
+
+
+(* 3. TOK OD ŠTEVILA NAPREJ *)
+(* Vrne tok n, n+1, n+2, n+3, ... *)
+(* Primer:
+   to_list 5 (from 3) = [3; 4; 5; 6; 7]
+*)
+let rec from n =
+  Cons(n, fun () -> from (n+1))
+
+
+(* 4. TOK Z DANO RAZLIKO *)
+(* Vrne aritmetični tok: start, start + step, start + 2*step, ... *)
+(* Primer:
+   to_list 5 (from_step 10 3) = [10; 13; 16; 19; 22]
+*)
+let rec from_step start step =
+  Cons(start, fun () -> from_step (start + step) step)
+
+
+(* 5. VZEMI PRVIH n ELEMENTOV KOT TOK *)
+(* Vrne tok, ki se po prvih n elementih nadaljuje z rezervnim elementom r. *)
+(* Uporabno, če hočemo "odrezati" tok, ampak tip mora še vedno biti stream. *)
+(* Primer:
+   to_list 6 (take_stream 3 nat (-1)) = [0; 1; 2; -1; -1; -1]
+*)
+let rec take_stream n s r =
+  match n with
+  | 0 -> repeat r
+  | _ ->
+    let Cons(el, tail) = s in
+    Cons(el, fun () -> take_stream (n-1) (tail ()) r)
+
+
+(* 6. IZPUSTI PRVIH n ELEMENTOV *)
+(* Vrne tok brez prvih n elementov. *)
+(* Primer:
+   to_list 5 (drop 3 nat) = [3; 4; 5; 6; 7]
+*)
+let rec drop n s =
+  match n with
+  | 0 -> s
+  | _ ->
+    let Cons(_, tail) = s in
+    drop (n-1) (tail ())
+
+
+(* 7. VZEMI VSAK n-TI ELEMENT *)
+(* Vrne tok elementov na indeksih 0, n, 2n, 3n, ... *)
+(* Primer:
+   to_list 5 (every 2 nat) = [0; 2; 4; 6; 8]
+*)
+let rec every n s =
+  let Cons(el, tail) = s in
+  Cons(el, fun () -> every n (drop (n-1) (tail ())))
+
+
+(* 8. FILTER TOKA *)
+(* Vrne tok elementov, ki zadoščajo pogoju p. *)
+(* Pozor: če v toku ni dovolj takih elementov, se lahko računanje nikoli ne konča. *)
+(* Primer:
+   to_list 5 (filter (fun x -> x mod 2 = 0) nat) = [0; 2; 4; 6; 8]
+*)
+let rec filter p s =
+  let Cons(el, tail) = s in
+  if p el then
+    Cons(el, fun () -> filter p (tail ()))
+  else
+    filter p (tail ())
+
+
+(* 9. TOK SODIH ŠTEVIL *)
+(* Vrne tok sodih naravnih števil. *)
+(* Primer:
+   to_list 6 even_nat = [0; 2; 4; 6; 8; 10]
+*)
+let even_nat =
+  filter (fun x -> x mod 2 = 0) (from 0)
+
+
+(* 10. TOK LIHIH ŠTEVIL *)
+(* Vrne tok lihih naravnih števil. *)
+(* Primer:
+   to_list 6 odd_nat = [1; 3; 5; 7; 9; 11]
+*)
+let odd_nat =
+  filter (fun x -> x mod 2 = 1) (from 0)
+
+
+(* 11. SEŠTEVANJE TOKOV *)
+(* Sešteje dva tokova po komponentah. *)
+(* Primer:
+   to_list 5 (add_streams nat nat) = [0; 2; 4; 6; 8]
+*)
+let rec add_streams s1 s2 =
+  let Cons(h1, t1) = s1 in
+  let Cons(h2, t2) = s2 in
+  Cons(h1 + h2, fun () -> add_streams (t1 ()) (t2 ()))
+
+
+(* 12. MNOŽENJE TOKOV *)
+(* Zmnoži dva tokova po komponentah. *)
+(* Primer:
+   to_list 5 (mul_streams nat nat) = [0; 1; 4; 9; 16]
+*)
+let rec mul_streams s1 s2 =
+  let Cons(h1, t1) = s1 in
+  let Cons(h2, t2) = s2 in
+  Cons(h1 * h2, fun () -> mul_streams (t1 ()) (t2 ()))
+
+
+(* 13. ODŠTEVANJE TOKOV *)
+(* Odšteje dva tokova po komponentah. *)
+(* Primer:
+   to_list 5 (sub_streams (from 10) nat) = [10; 10; 10; 10; 10]
+*)
+let rec sub_streams s1 s2 =
+  let Cons(h1, t1) = s1 in
+  let Cons(h2, t2) = s2 in
+  Cons(h1 - h2, fun () -> sub_streams (t1 ()) (t2 ()))
+
+
+(* 14. SKALIRANJE TOKA *)
+(* Vsak element toka pomnoži s konstanto k. *)
+(* Primer:
+   to_list 5 (scale 10 nat) = [0; 10; 20; 30; 40]
+*)
+let rec scale k s =
+  let Cons(el, tail) = s in
+  Cons(k * el, fun () -> scale k (tail ()))
+
+
+(* 15. PREMIK TOKA ZA KONSTANTO *)
+(* Vsakemu elementu prišteje konstanto k. *)
+(* Primer:
+   to_list 5 (shift 100 nat) = [100; 101; 102; 103; 104]
+*)
+let rec shift k s =
+  let Cons(el, tail) = s in
+  Cons(k + el, fun () -> shift k (tail ()))
+
+
+(* 16. KVADRATI *)
+(* Vrne tok kvadratov elementov danega toka. *)
+(* Primer:
+   to_list 6 (squares nat) = [0; 1; 4; 9; 16; 25]
+*)
+let rec squares s =
+  let Cons(el, tail) = s in
+  Cons(el * el, fun () -> squares (tail ()))
+
+
+(* 17. DELNE VSOTE *)
+(* Vrne tok delnih vsot.
+   Če je vhodni tok a0, a1, a2, ...
+   je rezultat a0, a0+a1, a0+a1+a2, ...
+*)
+(* Primer:
+   to_list 5 (partial_sums nat) = [0; 1; 3; 6; 10]
+*)
+let partial_sums s =
+  let rec aux acc s =
+    let Cons(el, tail) = s in
+    let new_acc = acc + el in
+    Cons(new_acc, fun () -> aux new_acc (tail ()))
+  in
+  aux 0 s
+
+
+(* 18. DELNI PRODUKTI *)
+(* Vrne tok delnih produktov.
+   Če je vhodni tok a0, a1, a2, ...
+   je rezultat a0, a0*a1, a0*a1*a2, ...
+*)
+(* Primer:
+   to_list 5 (partial_products (from 1)) = [1; 2; 6; 24; 120]
+*)
+let partial_products s =
+  let rec aux acc s =
+    let Cons(el, tail) = s in
+    let new_acc = acc * el in
+    Cons(new_acc, fun () -> aux new_acc (tail ()))
+  in
+  aux 1 s
+
+
+(* 19. FAKULTETE *)
+(* Vrne tok fakultet: 0!, 1!, 2!, 3!, 4!, ... *)
+(* Primer:
+   to_list 7 factorials = [1; 1; 2; 6; 24; 120; 720]
+*)
+let factorials =
+  let rec aux n acc =
+    Cons(acc, fun () -> aux (n+1) (acc * (n+1)))
+  in
+  aux 0 1
+
+
+(* 20. POTENCE ŠTEVILA *)
+(* Vrne tok potenc danega števila x: 1, x, x^2, x^3, ... *)
+(* Primer:
+   to_list 6 (powers 2) = [1; 2; 4; 8; 16; 32]
+*)
+let powers x =
+  let rec aux current =
+    Cons(current, fun () -> aux (current * x))
+  in
+  aux 1
+
+
+(* 21. IZMENIČNI TOK *)
+(* Vrne tok, ki izmenično vsebuje elementa a in b. *)
+(* Primer:
+   to_list 7 (alternate "a" "b") = ["a"; "b"; "a"; "b"; "a"; "b"; "a"]
+*)
+let rec alternate a b =
+  Cons(a, fun () -> Cons(b, fun () -> alternate a b))
+
+
+(* 22. PREPLETANJE DVEH TOKOV *)
+(* Vrne tok, ki izmenično jemlje elemente iz prvega in drugega toka. *)
+(* Primer:
+   to_list 8 (interleave nat (from 100)) = [0; 100; 1; 101; 2; 102; 3; 103]
+*)
+let rec interleave s1 s2 =
+  let Cons(h1, t1) = s1 in
+  Cons(h1, fun () -> interleave s2 (t1 ()))
+
+
+(* 23. PARI ZAPOREDNIH ELEMENTOV *)
+(* Iz toka a0, a1, a2, ... naredi tok parov:
+   (a0,a1), (a1,a2), (a2,a3), ...
+*)
+(* Primer:
+   to_list 5 (pairs nat) = [(0,1); (1,2); (2,3); (3,4); (4,5)]
+*)
+let rec pairs s =
+  let Cons(h1, t1) = s in
+  let s_next = t1 () in
+  let Cons(h2, _) = s_next in
+  Cons((h1, h2), fun () -> pairs s_next)
+
+
+(* 24. RAZLIKE ZAPOREDNIH ELEMENTOV *)
+(* Vrne tok razlik med zaporednimi elementi:
+   a1-a0, a2-a1, a3-a2, ...
+*)
+(* Primer:
+   to_list 5 (differences squares_nat) = [1; 3; 5; 7; 9]
+*)
+let rec differences s =
+  let Cons(h1, t1) = s in
+  let s_next = t1 () in
+  let Cons(h2, _) = s_next in
+  Cons(h2 - h1, fun () -> differences s_next)
+
+
+(* 25. TOK KVADRATOV NARAVNIH ŠTEVIL *)
+(* Vrne tok 0, 1, 4, 9, 16, ... *)
+(* Primer:
+   to_list 6 squares_nat = [0; 1; 4; 9; 16; 25]
+*)
+let squares_nat =
+  squares (from 0)
+
+
+(* 26. TOK TRIKOTNIŠKIH ŠTEVIL *)
+(* Trikotniška števila: 0, 1, 3, 6, 10, 15, ... *)
+(* Primer:
+   to_list 7 triangular = [0; 1; 3; 6; 10; 15; 21]
+*)
+let triangular =
+  partial_sums (from 0)
+
+
+(* 27. TOK PAROV ELEMENTOV DVEH TOKOV *)
+(* Združi dva tokova v tok parov. *)
+(* Primer:
+   to_list 5 (zip_pairs nat (from 10)) = [(0,10); (1,11); (2,12); (3,13); (4,14)]
+*)
+let rec zip_pairs s1 s2 =
+  let Cons(h1, t1) = s1 in
+  let Cons(h2, t2) = s2 in
+  Cons((h1, h2), fun () -> zip_pairs (t1 ()) (t2 ()))
+
+
+(* 28. TOK INDEKSIRANIH ELEMENTOV *)
+(* Vsak element toka opremi z njegovim indeksom. *)
+(* Primer:
+   to_list 4 (indexed (from 10)) = [(0,10); (1,11); (2,12); (3,13)]
+*)
+let indexed s =
+  let rec aux i s =
+    let Cons(el, tail) = s in
+    Cons((i, el), fun () -> aux (i+1) (tail ()))
+  in
+  aux 0 s
+
+
+(* 29. UPORABI FUNKCIJO NA VSAKEM ELEMENTU Z INDEKSOM *)
+(* Podobno kot map, ampak funkcija dobi še indeks elementa. *)
+(* Primer:
+   to_list 5 (mapi (fun i x -> i + x) nat) = [0; 2; 4; 6; 8]
+*)
+let mapi f s =
+  let rec aux i s =
+    let Cons(el, tail) = s in
+    Cons(f i el, fun () -> aux (i+1) (tail ()))
+  in
+  aux 0 s
+
+
+(* 30. ZAMENJAJ VSAK ELEMENT S PAROM *)
+(* Vsak element x spremeni v par (x, f x). *)
+(* Primer:
+   to_list 4 (with_function (fun x -> x*x) nat) = [(0,0); (1,1); (2,4); (3,9)]
+*)
+let rec with_function f s =
+  let Cons(el, tail) = s in
+  Cons((el, f el), fun () -> with_function f (tail ()))

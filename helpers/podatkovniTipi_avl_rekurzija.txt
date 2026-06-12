@@ -1,0 +1,465 @@
+(* 
+*
+* RECORDI, zapisi
+*
+*
+* *)
+type size = Small | Medium | Large
+type 'a classes = { small : 'a list; medium : 'a list; large : 'a list }
+
+let temp = {small = [1]; medium = [2]; large = [3]}
+
+let f x = if x < 10 then Small else if x < 100 then Medium else Large;;
+
+let sort f alst = 
+  let rec sort_rec cls lst = 
+    match lst with
+    | (h::t) ->
+      begin
+        match f h with
+        | Small -> sort_rec {cls with small = h :: cls.small} t
+        | Medium -> sort_rec {cls with medium = h :: cls.medium} t
+        | Large -> sort_rec {cls with large = h :: cls.large} t
+      end
+    | [] -> cls
+    in
+    sort_rec {small=[]; medium=[];large=[]} alst
+
+
+(* 
+*
+*
+* PODATKOVNI TIPI
+*
+*
+ *)
+type status = {version:string; code:int};;
+type date = {dof:string; ddmmyy:string; time:string; zone: string}
+type contentType = {ctype:string; charset:string}
+type transferEncoding =
+  | Chunked
+  | Compress
+  | Deflate
+  | GZIP
+  | Identity
+  | UNKNOWN
+
+let te_to_string = function
+  | Chunked -> "chunked"
+  | Compress -> "compress"
+  | Deflate -> "deflate"
+  | GZIP -> "gzip"
+  | Identity -> "identity"
+  | _ -> "unknown"
+
+let string_to_te = function
+  | "chunked" -> Chunked
+  | "compress" -> Compress
+  | "deflate" -> Deflate
+  | "gzip" -> GZIP
+  | "identity" -> Identity
+  | _ -> UNKNOWN
+
+type field = 
+  | Server of string
+  | Date of date
+  | ContentType of string
+  | Connection of string
+  | TransferEncoding of transferEncoding
+  | Expires of date
+type response = {status:status; headers:field list; body: string}
+let myStatus = {version="HTTP/1.1"; code=200};;
+
+let res = {
+  status={version="HTTP/1.1"; code=200};
+  headers = [
+    Server "nginx"; 
+    Date {dof="Sun"; ddmmyy="31 May 2026"; time="08:12:17"; zone="GMT"}; 
+    ContentType "text"; 
+    Connection "keep-alive"; 
+    TransferEncoding GZIP;
+    Expires {dof="Mon"; ddmmyy="31 May 2027"; time="08:12:17"; zone="GMT"}];
+  body="body"
+}
+
+let string_of_status s =
+  s.version ^ " " ^
+  string_of_int s.code ^ " " ^
+  (match s.code with
+  | 200 -> "OK" 
+  | _ -> "")
+  
+let string_of_date d =
+  d.dof ^ ", " ^ d.ddmmyy ^ " " ^ d.time ^ " " ^ d.zone
+
+let string_of_field f =
+  match f with
+  | Server s -> "Server: " ^ s
+  | Date d -> "Date: " ^ string_of_date d
+  | ContentType ct -> "Content-Type: " ^ ct
+  | Connection c -> "Connection: " ^ c
+  | TransferEncoding te -> "Transfer-Encoding: " ^ te_to_string te
+  | Expires d -> "Expires: " ^ string_of_date d
+
+  
+
+let string_of_response r =
+  print_endline               (*treba dat print_endline drugace se vidijo samo \n v izpisu namesto new line*)
+  (
+  string_of_status r.status
+  ^ "\n" ^
+  String.concat "\n" (List.map string_of_field r.headers)
+  ^ "\n\n" ^
+  r.body
+  )
+
+(* 
+*
+*
+* AVL, drevo, utezeno binarno drevo
+*
+*)
+type order =
+  | Less
+  | Equal  
+  | Greater
+let cmp a b =
+  if a=b then Equal else if a > b then Greater else Less
+
+type avltree = 
+  | Node of int * int * avltree * avltree  (*vsebina, visina, levo, desno*)
+  | Empty
+
+let height t = 
+  match t with
+  | Node (_, h, _, _) -> h
+  | Empty -> -1
+
+let leaf value = Node(value, 0, Empty, Empty)
+
+let node value left right = Node(value, 1 + max (height left) (height right), left, right)
+
+let myTree = 
+  (
+    node 
+    5 
+    (node 3 (leaf 1) (leaf 4)) 
+    (leaf 8)
+  )
+
+let rec toList t = 
+  match t with
+  | Node (v, h, l, r) -> (toList l) @ v :: (toList r)
+  | Empty -> []
+
+let rec search target t =
+  match t with
+  | Empty -> false
+  | Node (v, _, l, r) ->
+    match (cmp target v) with
+    | Equal -> true
+    | Greater -> search target r
+    | Less -> search target l
+
+
+let imbalance t = 
+  match t with
+  | Node (_, _, l, r) -> height l - height r
+  | Empty -> 0
+
+let rotateLeft t =
+  match t with
+  | Node (x, _, xl, Node(y, _, yl, yd)) -> (node y (node x xl yl) yd)
+  | _ -> t
+
+let rotateRight t = 
+  match t with
+  | Node (y, _, Node(x, _, xl, xd), yd) -> (node x xl (node y xd yd))
+  | _ -> t
+
+let balance t =
+  match t with
+  | Empty -> t
+  | Node(v, _, l, r) ->
+      match imbalance t, imbalance l, imbalance r with (* delamo matching nad trojico treh stevil*)
+      | (2, (0 | 1), _) -> rotateRight t
+      | (2, -1, _) -> rotateRight (node v (rotateLeft l) r) (*ne mores narest samo rotateRight (rotateLeft l) ker to se iznici in nikjer ne rotiras nad t*) 
+      | (-2, _, (0 | -1)) -> rotateLeft t
+      | (-2, _, 1) -> rotateLeft (node v l (rotateRight r))
+      | (( 0 | 1 | -1), _, _) -> t (*ce ne rabimo naredit nobenih rotacij*)
+      | _ -> failwith "ne da se popraviti"
+
+let rec add x t =
+  match t with
+  | Empty -> leaf x
+  | Node (y, _, l, r) -> 
+    match (cmp x y) with
+    | Equal -> t
+    | Less -> balance (node y (add x l) r)
+    | Greater -> balance (node y l (add x r))
+
+let rec removeSuccessor t =
+  match t with
+  | Empty -> failwith "PRAZNO DREVO"
+  | Node (x, _, Empty, r) -> (r, x)
+  | Node (x, _, l, r) ->
+      let (l', successor) = removeSuccessor l in
+      (balance (node x l' r), successor)
+
+let rec remove x t =
+  match t with
+  | Empty -> Empty
+  | Node (y, _, l, r) ->
+      match cmp x y with
+      | Less ->
+          balance (node y (remove x l) r)
+
+      | Greater ->
+          balance (node y l (remove x r))
+
+      | Equal ->
+          match l, r with
+          | Empty, Empty -> Empty
+          | Empty, _ -> r
+          | _, Empty -> l
+          | _, _ ->
+              let (r', successor) = removeSuccessor r in
+              balance (node successor l r')
+
+let show t =
+  let make_space = String.map (fun _ -> ' ') in 
+  let rec string_of_lvl lvl = function 
+    | Empty -> if lvl = 0 then "E" else " " 
+    | Node (n, h, l, r) ->
+        let sn = string_of_int n in
+        let sl = string_of_lvl lvl l in
+        let sr = string_of_lvl lvl r in
+        if h = lvl
+        then make_space sl ^ sn ^ make_space sr
+        else sl ^ make_space sn ^ sr
+  in
+  let rec print_levels lvl =
+    if lvl >= 0
+    then (print_string (string_of_int lvl ^ ": " ^ string_of_lvl lvl t ^ "\n");
+          print_levels (lvl-1))
+    else ()
+  in
+  print_levels (height t) ; flush stdout
+
+(*
+*
+*
+* REKURZIJA, rep, repna rekurzija, tail recursive, tail_recursion
+*
+* 
+ *)
+(* Tu je program ki sešteje prvih 42 lihih števil: *)
+let vsota_lihih1 n = 
+  let i = ref 0 in
+  let sum = ref 0 in
+  while !i < n do
+    sum := !sum + (2 * !i + 1) ;
+    i := !i + 1
+  done;
+  !sum
+
+(* Sestavite funkcijo vsota1 : int -> int, ki sprejme n in vrne vsoto 1 + 2 + ⋯ + n. Uporabite reference in zanko while. *)
+let vsota1 n = 
+  let i = ref 1 in
+  let sum = ref 0 in
+  while !i <= n do
+    sum := !sum + !i ;
+    i := !i + 1;
+  done;
+  !sum
+
+(* Sestavite funkcijo fibonacci1 : int -> int, ki sprejme n in vrne n-to Fibonaccijevo število F(n). 
+   Nauk: Fibonaccijevo zaporedje je definirano s predpisom: 
+   F(0) = 0
+   F(1) = 1
+   F(n) = F(n-1) + F(n-2)
+   Uporabite reference in zanko while.
+*)
+let fibonacci1 n = 
+  match n with
+  | 0 -> 0
+  | 1 -> 1
+  | _ -> 
+    let i = ref 0 in
+    let fn0 = ref 0 in
+    let fn1 = ref 1 in
+    while !i < n do
+      let temp = !fn1 in
+      fn1 := !fn0 + !fn1 ;
+      fn0 := temp; 
+      i := !i + 1 ;
+    done;
+    !fn0
+
+(* Sestavite funkcijo vsota2 : int -> int, ki sprejme n in vrne vsoto 1 + 2 + ⋯ + n. 
+   Funkcija naj bo rekurzivna in naj ne uporablja zank in referenc.
+*)
+let rec vsota2 n =
+  match n with
+  | 0 -> 0
+  | n -> n + vsota2 (n-1)
+
+(* Sestavite funkcijo fibonacci2 : int -> int, ki sprejme n in vrne n-to Fibonaccijevo število F(n). 
+   Funkcija naj bo rekurzivna in naj ne uporablja zank in referenc.
+*)
+let rec fibonacci2 n = 
+  match n with
+  | 0 -> 0
+  | 1 -> 1
+  | n -> fibonacci2 (n-1) + fibonacci2 (n - 2)
+
+
+(* vsota_lihih1 AMPAK z uporabo repne rekurzije *)
+let vsota_lihih2 n = 
+  let rec vsota_lihih_internal sum i =
+    if i < n then
+      vsota_lihih_internal (sum + 2*i + 1) (i+1)
+    else
+      sum
+  in
+  vsota_lihih_internal 0 0
+
+(* Po zgornjem receptu predelajte funkcijo vsota1 v funkcijo vsota3, ki uporablja akumulatorje in repno rekurzijo. 
+   Nato primerajte delovanje funkcij vsota1, vsota2 in vsota3. Ali lahko vse tri izračunajo npr. vsoto prvih 1000000 števil?
+*)
+(* vsota1 in vsota3 zmoreta vecja stevila *)
+(* vsota2 (naivna rekurzija) se ustavi pri 100mio (mogoce se prej) *)
+let vsota3 n =
+  let rec vsota_internal sum i =
+    if i <= n then
+      vsota_internal (sum + i) (i + 1)
+    else
+      sum
+  in
+  vsota_internal 0 0;;
+
+(* Po zgornjem receptu predelajte funkcijo fibonacci1 v funkcijo fibonacci3, ki uporablja akumulatorje in repno rekurzijo. *)
+(* fibonacci1 in fibonacci2 gresta do n=90 *)
+let fibonacci3 n = 
+  if n = 0 then 0 else
+  let rec fib_internal i f0 f1 = 
+    if i <= n then
+      fib_internal (i + 1) (f1) (f0 + f1)
+    else
+      f0
+  in
+  fib_internal 2 1 1;;
+
+
+(* Splošna pretvorba zanke while v rekurzivno funkcijo *)
+(* 
+s := s₀
+while p(s) do
+  s := f(s)
+done ;
+return r(s)
+*)
+let zanka s0 p f r =
+  let rec loop s =
+    if p s then loop (f s) else r s
+  in
+  loop s0
+
+let vsota4 n = 
+  zanka 
+    (1, 0) (* (i, sum) *)
+    (fun (i, _) -> i <= n) 
+    (fun (i, sum) -> (i+1, sum+i))
+    (fun (_, sum) -> sum)
+
+let fibonacci1 n = 
+  match n with
+  | 0 -> 0
+  | 1 -> 1
+  | _ -> 
+    let i = ref 0 in
+    let fn0 = ref 0 in
+    let fn1 = ref 1 in
+    while !i < n do
+      let temp = !fn1 in
+      fn1 := !fn0 + !fn1 ;
+      fn0 := temp; 
+      i := !i + 1 ;
+    done;
+    !fn0
+
+let fibonacci4 n =
+  zanka
+    (0, 0, 1) (* (i, fn0, fn1) *)
+    (fun (i, _, _) -> i < n)
+    (fun (i, fn0, fn1) -> (i+1, fn1, fn0 + fn1))
+    (fun (_, fn0, _) -> fn0)
+
+(* 
+Funkcija forzanka naj prejme začetno stanje s₀, spodnjo in zgornjo mejo a oziroma b ter funkciji f in r. Njen tip bo torej
+α → int → int → (int → α → α) → (α → β) → β
+
+s := s₀
+for i = a to b do
+  s := f(i, s)
+done ;
+return r(s) 
+*)
+let forzanka s0 a b f r =
+    let rec loop i s =
+        if i <= b then loop (i + 1) (f i s) else (r s)
+    in
+    loop a s0
+
+let fibonacci1 n = 
+  match n with
+  | 0 -> 0
+  | 1 -> 1
+  | _ -> 
+    let i = ref 0 in
+    let fn0 = ref 0 in
+    let fn1 = ref 1 in
+    while !i < n do
+      let temp = !fn1 in
+      fn1 := !fn0 + !fn1 ;
+      fn0 := temp; 
+      i := !i + 1 ;
+    done;
+    !fn0
+
+let fibonacci5 n = 
+  forzanka
+    (0, 1) (* (fn0, fn1) *)
+    0
+    n
+    (fun i (fn0, fn1) -> (fn1, fn0 + fn1))
+    (fun (fn0, _) -> fn0)
+
+
+(*  *)
+(* DODATNE NALOGE *)
+(*  *)
+
+type 'a tree = Leaf of int | Node of 'a tree * 'a tree
+let rec count f t = 
+  match t with
+  | Leaf x -> if (f x) then 1 else 0
+  | Node (t1, t2) -> count f t1 + count f t2
+
+
+let pascal n =
+  let rec next_row row =
+    match row with
+    | [] -> []
+    | [_] -> []
+    | x :: y :: rest -> (x + y) :: next_row (y :: rest)
+  in
+  let make_next row =
+    1 :: next_row row @ [1]
+  in
+  let rec aux k row =
+    if k = 0 then []
+    else row :: aux (k - 1) (make_next row)
+  in
+  aux n [1]
+;;
